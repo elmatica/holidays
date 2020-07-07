@@ -15,11 +15,10 @@ module Holidays
           holidays = []
           dates_driver.each do |year, months|
             months.each do |month|
-              next unless hbm = @holidays_by_month_repo.find_by_month(month)
+              next unless hbm = @holidays_by_month_repo.find_by_month(year, month)
               hbm.each do |h|
                 next if informal_type?(h[:type]) && !informal_set?(options)
                 next unless @rules[:in_region].call(regions, h[:regions])
-
                 if h[:year_ranges]
                   next unless @rules[:year_range].call(year, h[:year_ranges])
                 end
@@ -75,10 +74,13 @@ module Holidays
             current_month = month
             current_day = h[:mday] || @day_of_month_calculator.call(year, month, h[:week], h[:wday])
           end
-
           # Silently skip bad mdays
           #TODO Should we be doing something different here? We have no concept of logging right now. Maybe we should add it?
           Date.civil(year, current_month, current_day) rescue nil
+        end
+
+        def is_lunar?(method)
+          method == "lunar_to_solar(year, month, day, region)"
         end
 
         def custom_holiday(year, month, h)

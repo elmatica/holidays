@@ -10,9 +10,11 @@ module Holidays
           @holidays_by_month
         end
 
-        def find_by_month(month)
+        def find_by_month(year, month)
           raise ArgumentError unless month >= 0 && month <= 12
-          @holidays_by_month[month]
+
+          holidays = @holidays_by_month[month] || []
+          holidays.concat(find_lunar_holidays_by_month(year, month))
         end
 
         def add(new_holidays)
@@ -39,6 +41,27 @@ module Holidays
         end
 
         private
+
+        def find_lunar_holidays_by_month(year, solar_month)
+          lunar_holidays = []
+          @holidays_by_month.each_pair{|month, holidays|
+            lunar_holidays << holidays.filter{ |h|
+              is_lunar_holiday?(h) &&
+              get_solar_month(year, month, h[:mday], h[:regions].first) == solar_month
+            }
+          }
+          lunar_holidays.flatten!
+        end
+
+        def is_lunar_holiday?(holiday)
+          holiday[:function] == "lunar_to_solar(year, month, day, region)"
+        end
+
+        def get_solar_month(year, month, day, region)
+          Holidays::DateCalculator::LunarDate.new.to_solar(
+            year, month, day, region
+          ).month
+        end
 
         def definition_exists?(existing_def, target_def)
           existing_def[:name] == target_def[:name] &&
